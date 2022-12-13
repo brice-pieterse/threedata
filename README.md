@@ -12,7 +12,7 @@ npm install threedata (maybe one day)
 
 ## Usage
 
-```python
+```
 import THREEDATA from 'threedata
 
 # instructions will be added here

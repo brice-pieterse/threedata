@@ -2,32 +2,41 @@ import * as THREE from 'three';
 
 class Grapher {
 
-    constructor(){
-        this.renderer = new THREE.WebGLRenderer()
-        this.camera = new THREE.OrthographicCamera()
-        this.camera.near = 0.1
-        this.camera.far = 1;
+    constructor(wrapper, canvas){
+        
+        const graphRenderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, transparent: true })
+        graphRenderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
+        graphRenderer.setClearColor(0x000000, 0)
+        graphRenderer.setPixelRatio(devicePixelRatio)
+        this.graphRenderer = graphRenderer;
+        
+        this.wrapper = wrapper
+        this.labelsWrapper = document.createElement('div')
+        this.labelsWrapper.style.width= '100%'
+        this.labelsWrapper.style.height = '100%'
+        this.labelsWrapper.style.position = 'absolute'
+        this.labelsWrapper.style.top = 0;
+        this.labelsWrapper.style.left = 0;
+        this.wrapper.appendChild( this.labelsWrapper )
+        this.canvas - canvas
     }
 
-    graph(graph, canvas){
-        if (graph.needsUpdate){
-            const domain = graph.domain;
-            const range = graph.range;
-            this.camera.left = -domain/2;
-            this.camera.right = domain/2;
-            this.camera.top = range/2;
-            this.camera.bottom = -range/2;
+    graph(graph){
 
-            this.camera.position.x = domain/2;
-            this.camera.position.y = range/2;
-            
-            this.camera.updateProjectionMatrix();
-            graph.needsUpdate = false
+        if (!graph.built){
+            // remove labels from past graph
+            for (let child of this.labelsWrapper.children){
+                this.labelsWrapper.removeChild(child)
+            }
+            // add this graph's labels
+            this.labelsWrapper.appendChild(graph.labels)
+
+            // must build the graph components (axis lines and data lines) here since it ensures we have the ranges creates
+            graph.build()
+            graph.built = true
         }
 
-        // set the render target to the canvas
-
-        this.renderer.render(graph, this.camera);
+        this.graphRenderer.render(graph, graph.camera);
     }
 }
 
