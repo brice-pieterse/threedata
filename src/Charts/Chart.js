@@ -31,11 +31,14 @@ class Chart extends THREE.Scene {
         this.xLabels = []
         this.yLabels = []
         this.labelLines = []
+        this.xGridLines = 1
+        this.yGridLines = 1
 
         this.labels = document.createElement('div')
         this.labels.style.width= '100%'
         this.labels.style.height = '100%'
         this.labels.style.position = 'absolute'
+        this.labels.style.cursor = 'pointer'
         this.labels.style.top = 0;
         this.labels.style.left = 0;
 
@@ -46,15 +49,13 @@ class Chart extends THREE.Scene {
         this.buildSteps = []
 
         // extras
-        this.AxisXDashedLineMaterial = new THREE.LineDashedMaterial( { linewidth: 1, scale: 1, dashSize: 0.1, gapSize: 1, color: 0x000000, opacity: 0.25, transparent: true } );
-        this.AxisYDashedLineMaterial = new THREE.LineDashedMaterial( { linewidth: 1, scale: 1, dashSize: 0.1, gapSize: 1, color: 0x000000, opacity: 0.25, transparent: true } );
+        this.AxisXDashedLineMaterial = new THREE.LineDashedMaterial( { dashSize: 0.1, gapSize: 1, color: 0x000000, opacity: 0.25, transparent: true, depthWrite: false, depthTest: true } );
+        this.AxisYDashedLineMaterial = new THREE.LineDashedMaterial( { dashSize: 0.1, gapSize: 1, color: 0x000000, opacity: 0.25, transparent: true, depthWrite: false, depthTest: true } );
         this.raycaster = new THREE.Raycaster();
         this.pointer = new THREE.Vector2();            
     }
 
-    // if you provide strings, they will be spaced evenly, this is used for labels like dates if we know the data range will be 12
-    // if we chose to match numerically, we must provide array of numbers instead of strings
-    setXLabels(labels, matchNumerically = false, ...classes){
+    setXLabels(labels, matchNumerically = false, gridLines, ...classes){
         if (Array.isArray(labels)){
             // always true
             if (labels.length > this.graphableXRange){
@@ -65,11 +66,14 @@ class Chart extends THREE.Scene {
             }
 
             this.buildSteps.push(() => {
-                for (let i = 0; i <  labels.length; i++){
+                let g = 0;
+                for (let i = 0; i < labels.length; i++){
+                    g++
                     let label = document.createElement('p')
                     let percentFromOrigin;
                     label.innerText = labels[i]
                     label.style.position = 'absolute'
+                    label.style.whiteSpace = 'nowrap'
                     label.style.bottom = 0;
         
                     if (!matchNumerically){
@@ -92,29 +96,41 @@ class Chart extends THREE.Scene {
         
                     label.style.transform = `translate(-50%, 16px)`
                 }
+
+                if (gridLines){
+                    this.setXGridLines(g + 1)
+                }
             })
         }
         // we are using increments
         else if (!Number.isNaN(labels)) {
 
+            let increment = labels
+            if (increment == 0){
+                increment = 1
+            }
+
             if (labels > this.graphableXRange){
                 this.setGraphableXRange(labels)
             }
-            else {
-                this.setGraphablexRange(Math.ceil(this.graphableXRange / labels) * labels)
-            }
+            else if (labels > 0){
+                this.setGraphableXRange(Math.ceil(this.graphableXRange / labels) * labels)
+            } 
+            // else this.setGraphableXRange(1)
 
             this.buildSteps.push(() => {
                 let incr = 0;
                 let i = 1;
+                
                 while(incr < this.graphableXRange){
-                    incr = i * labels;
+                    incr = i * increment;
                     i++
                     let label = document.createElement('p')
                     let percentFromOrigin;
                     label.innerText = incr
                     label.style.position = 'absolute'
                     label.style.left = 0
+                    label.style.whiteSpace = 'nowrap'
                     percentFromOrigin = (incr/this.graphableXRange) * 100
                     label.style.bottom = `${percentFromOrigin}%`;
         
@@ -131,17 +147,17 @@ class Chart extends THREE.Scene {
                     label.style.transform = `translate(-16px, 50%)`
                 }
 
+                if (gridLines){
+                    this.setXGridLines(i)
+                }
+
             })
         }
 
         return this
     }
     
-
-    // if you provide an array, labels will be spaced evenly, this is used for labels like dates if we know the data range will be 12
-    // if you chose to match numerically, we must provide array of numbers instead of strings, this only works when arr is an array
-    // if you provide a numerical value for labels, we will create labels in increments of (labels)
-    setYLabels(labels, matchNumerically = false, ...classes){
+    setYLabels(labels, matchNumerically = false, gridLines, ...classes){
 
         // we are using array matching
         if (Array.isArray(labels)){
@@ -155,13 +171,15 @@ class Chart extends THREE.Scene {
             }
     
             this.buildSteps.push(() => {
-                console.log(this.graphableYRange)
-                for (let i = 0; i <  labels.length; i++){
+                let g = 0;
+                for (let i = 0; i < labels.length; i++){
+                    g++
                     let label = document.createElement('p')
                     let percentFromOrigin;
                     label.innerText = labels[i]
                     label.style.position = 'absolute'
                     label.style.left = 0
+                    label.style.whiteSpace = 'nowrap'
         
                     if (!matchNumerically){
                         percentFromOrigin = ((i + 1)/labels.length) * 100
@@ -184,32 +202,42 @@ class Chart extends THREE.Scene {
         
                     label.style.transform = `translate(-16px, 50%)`
                 }
+
+                if (gridLines){
+                    this.setYGridLines(g)
+                }
+
             })
         }
         // we are using increments
         else if (!Number.isNaN(labels)) {
 
+            let increment = labels
+            if (increment == 0){
+                increment = 1
+            }
+
             if (labels > this.graphableYRange){
                 this.setGraphableYRange(labels)
             }
-            else {
-                this.setGraphableYRange(Math.ceil(this.graphableYRange / labels) * labels)
+            else if (labels > 0) {
+                this.setGraphableYRange(Math.ceil( (this.graphableYRange + increment) / labels) * labels)
             }
 
             this.buildSteps.push(() => {
                 let incr = 0;
-                let i = 1;
-                while(incr < this.graphableYRange){
-                    incr = i * labels;
+                let i = 0;
+                while(incr < (this.graphableYRange)){
+                    incr = i * increment;
                     i++
                     let label = document.createElement('p')
                     let percentFromOrigin;
                     label.innerText = incr
                     label.style.position = 'absolute'
                     label.style.left = 0
+                    label.style.whiteSpace = 'nowrap'
                     percentFromOrigin = (incr/this.graphableYRange) * 100
                     label.style.bottom = `${percentFromOrigin}%`;
-        
                     this.labels.appendChild(label)
     
                     this.yLabels.push({
@@ -223,27 +251,42 @@ class Chart extends THREE.Scene {
                     label.style.transform = `translate(-16px, 50%)`
                 }
 
+                if (gridLines){
+                    this.setYGridLines(i)
+                }
+
             })
         }
 
         return this;
     }
 
+    setXGridLines(n){
+        this.xGridLines = n
+        return this;
+    }
 
-    addLabelLines(axis){
+    setYGridLines(n){
+        this.yGridLines = n
+        return this;
+    }
+
+    buildGridLines(axis){
         switch(axis){
             case 'x':
-                for (let i = 0; i < this.xLabels.length + 1; i++){
-                    let ratio = (this.graphableXRange/this.xLabels.length)
+                for (let i = 0; i < this.xGridLines; i++){
+                    let ratio = (this.graphableXRange/this.xGridLines)
                     this.drawLabelLine({x: i * ratio, y: 0}, {x: i * ratio, y: this.graphableYRange}, this.AxisXDashedLineMaterial)
                 }
                 break
             case 'y':
-                for (let i = 0; i < this.yLabels.length + 1; i++){
-                    let ratio = (this.graphableYRange/this.yLabels.length)
-                    this.drawLabelLine({x: 0, y: i * ratio}, {x: this.graphableXRange, y: i * ratio}, this.AxisYDashedLineMaterial)
+                if (this.yGridLines > 1){
+                    for (let i = 0; i < this.yGridLines; i++){
+                        let ratio = (this.graphableYRange/(this.yGridLines - 1))
+                        this.drawLabelLine({x: 0, y: i * ratio}, {x: this.graphableXRange, y: i * ratio}, this.AxisYDashedLineMaterial)
+                    }
+                    break
                 }
-                break
         }
 
         return this 
@@ -279,51 +322,35 @@ class Chart extends THREE.Scene {
 
     setGraphableXRange(range){
         this.graphableXRange = range
-        if (this.graphableXRange > this.graphableYRange){
-            this.aspectXRange = this.graphableXRange/this.graphableYRange
-            this.aspectYRange = 1
-        }
-        else {
-            this.aspectXRange = 1
-            this.aspectYRange = this.graphableYRange/this.graphableXRange
-        }
-
         this.updateProportions()
     }
 
     setGraphableYRange(range){
         this.graphableYRange = range
-
-        if (this.graphableYRange > this.graphableXRange){
-            this.aspectYRange = this.graphableYRange/this.graphableXRange
-            this.aspectXRange = 1
-        }
-        else {
-            this.aspectYRange = 1
-            this.aspectXRange = this.graphableXRange/this.graphableYRange
-        }
-
         this.updateProportions()
     }
 
     drawLabelLine(start, end, mat){
-        const { points, colors } = this.getVerts([{x: start.x, y: start.y}, {x: end.x, y: end.y}], 0x000000)
+        const { points } = this.getVerts([{x: start.x, y: start.y, z: -1}, {x: end.x, y: end.y, z: -1}], 0x000000)
         const geometry = new THREE.BufferGeometry()
         geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( points, 3 ) );
         const line = new THREE.Line( geometry, mat );
         line.computeLineDistances()
+
         this.add(line)
+        line.position.z = -1
         this.labelLines.push(line)
     }
 
-    getVerts(sequence, clr){
+    getVerts(sequence, clr, offset = false){
         const color = new THREE.Color(clr);
+        let lineOffset = offset ? (this.graphableYRange * 0.005) : 0  // slight shift up
 
         const colors = []
         const points = [];
 
         sequence.forEach( (p, i) => {
-            points.push( p.x, p.y, 0 );
+            points.push( p.x, p.y + lineOffset, p.z != undefined ? p.z : 0 );
             colors.push(color.r, color.g, color.b)
 
             if (p.x > this.graphableXRange){
@@ -338,10 +365,21 @@ class Chart extends THREE.Scene {
     }
 
     updateProportions(){
-        this.AxisXDashedLineMaterial.dashSize = this.aspectYRange * (this.aspectYRange * 0.025)
-        this.AxisXDashedLineMaterial.gapSize = this.aspectYRange * (this.aspectYRange * 0.025)
-        this.AxisYDashedLineMaterial.dashSize = this.aspectXRange * (this.aspectXRange * 0.025)
-        this.AxisYDashedLineMaterial.gapSize = this.aspectXRange * (this.aspectXRange * 0.025)
+        let resY = this.wrapper.offsetHeight/this.wrapper.offsetWidth
+        let resX = this.wrapper.offsetWidth/this.wrapper.offsetHeight
+        this.resY = resY
+        this.resX = resX
+
+        let lineThicknessX = 0.0025
+        let lineThicknessY = 0.0025
+
+        lineThicknessX *= this.graphableYRange
+        lineThicknessY *= this.graphableXRange
+
+        this.AxisXDashedLineMaterial.dashSize = lineThicknessX
+        this.AxisXDashedLineMaterial.gapSize = lineThicknessX
+        this.AxisYDashedLineMaterial.dashSize = lineThicknessY
+        this.AxisYDashedLineMaterial.gapSize = lineThicknessY
 
         const domain = this.graphableXRange;
         const range = this.graphableYRange;
@@ -349,10 +387,8 @@ class Chart extends THREE.Scene {
         this.camera.right = domain/2
         this.camera.top = range/2// tiny padding for the camera view space;
         this.camera.bottom = -range/2
-
         this.camera.position.x = domain/2;
         this.camera.position.y = range/2;
-
         this.camera.updateProjectionMatrix();
     }
 
@@ -363,9 +399,11 @@ class Chart extends THREE.Scene {
         labelY.innerText = this.yName
         labelX.style.position = 'absolute'
         labelY.style.position = 'absolute'
+        labelX.style.textTransform = 'uppercase'
+        labelY.style.textTransform = 'uppercase'
 
         labelY.style.bottom = `50%`;
-        labelY.style.left = '-40px'
+        labelY.style.left = '-48px'
 
         labelX.style.bottom = 0;
         labelX.style.left = `50%`;
@@ -385,23 +423,55 @@ class Chart extends THREE.Scene {
     }
 
     onHover(cb){
-
-        let bounds = this.wrapper.getBoundingClientRect();
-
         const wrapperHover = (e) => {
+            let bounds = this.wrapper.getBoundingClientRect();
             let offsetSetX = e.clientX - bounds.left
             let offsetSetY = e.clientY - bounds.top
             this.pointer.x = (offsetSetX/this.wrapper.offsetWidth) * 2 - 1
             this.pointer.y = -(offsetSetY/this.wrapper.offsetHeight) * 2 + 1
-
             this.raycaster.setFromCamera( this.pointer, this.camera );
             const cursorInWorldSpace = this.raycaster.ray
-            // console.log(this.pointer.x, this.pointer.y)
             cb(cursorInWorldSpace)
         }
 
         this.graphEvents.push({what: 'mousemove', do: wrapperHover})
+        return this
+    }
 
+    onHoverOut(cb){
+        this.graphEvents.push({what: 'mouseleave', do: cb})
+    }
+
+    onMouseDown(cb){
+        const wrapperClick = (e) => {
+            let bounds = this.wrapper.getBoundingClientRect();
+            let offsetSetX = e.clientX - bounds.left
+            let offsetSetY = e.clientY - bounds.top
+            this.pointer.x = (offsetSetX/this.wrapper.offsetWidth) * 2 - 1
+            this.pointer.y = -(offsetSetY/this.wrapper.offsetHeight) * 2 + 1
+            this.raycaster.setFromCamera( this.pointer, this.camera );
+            const cursorInWorldSpace = this.raycaster.ray
+            cb(cursorInWorldSpace)
+        }
+
+        this.graphEvents.push({what: 'mousedown', do: wrapperClick})
+        return this
+    }
+
+    onMouseUp(cb){
+        const wrapperClickRelease = (e) => {
+            let bounds = this.wrapper.getBoundingClientRect();
+            let offsetSetX = e.clientX - bounds.left
+            let offsetSetY = e.clientY - bounds.top
+            this.pointer.x = (offsetSetX/this.wrapper.offsetWidth) * 2 - 1
+            this.pointer.y = -(offsetSetY/this.wrapper.offsetHeight) * 2 + 1
+            this.raycaster.setFromCamera( this.pointer, this.camera );
+            const cursorInWorldSpace = this.raycaster.ray
+            cb(cursorInWorldSpace)
+        }
+
+        this.graphEvents.push({what: 'mouseup', do: wrapperClickRelease})
+        return this
     }
 
     addBeforeGraphing(cb){
@@ -410,7 +480,6 @@ class Chart extends THREE.Scene {
     }
 
     destroy(){
-        
         // eventlisteners
         for (let e of this.graphEvents){
             this.wrapper.removeEventListener(e.what, e.do)
@@ -419,8 +488,6 @@ class Chart extends THREE.Scene {
         // geometries and materials
         this.traverse(object => {
             if (!object.isMesh) return
-            
-            //console.log('dispose geometry!')
             object.geometry.dispose()
 
             if (object.material.isMaterial) {
@@ -430,8 +497,6 @@ class Chart extends THREE.Scene {
                 for (const material of object.material) cleanMaterial(material)
             }
         })
-
-        console.log("done destorying")
 
     }
 

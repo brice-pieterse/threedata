@@ -18,12 +18,13 @@ class Grapher {
         this.labelsWrapper.style.top = 0;
         this.labelsWrapper.style.left = 0;
         this.wrapper.appendChild( this.labelsWrapper )
-        this.canvas - canvas
+        this.canvas = canvas
     }
 
     graph(graph){
 
         if (!graph.built){
+            graph.built = true
             // remove labels from past graph
             for (let child of this.labelsWrapper.children){
                 this.labelsWrapper.removeChild(child)
@@ -33,11 +34,15 @@ class Grapher {
 
             // must build the graph components (axis lines and data lines) here since it ensures we have the ranges creates
             graph.build()
-            graph.built = true
         }
 
+        this.render(graph)
+    }
+
+    render(graph){
         this.graphRenderer.render(graph, graph.camera);
     }
+    
 }
 
 

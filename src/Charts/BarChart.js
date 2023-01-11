@@ -2,6 +2,33 @@ import { Chart } from "./Chart"
 import * as THREE from 'three'
 
 class BarChart extends Chart {
+
+    constructor(xName, yName, wrapper){
+        super(xName, yName, wrapper);
+        this.dropShadow = false
+        this.dropShadowMaterial = new THREE.ShaderMaterial({
+            vertexShader: `
+                varying vec2 vUv; 
+                
+                void main(){
+                    vec4 modelPosition = modelMatrix * vec4(position, 1.0);
+                    vec4 viewPosition = viewMatrix * modelPosition;
+                    vec4 projectedPosition = projectionMatrix * viewPosition;
+                    gl_Position = projectedPosition;
+                    vUv = uv;
+                }
+            `,
+            fragmentShader: `
+            varying vec2 vUv; 
+                void main(){
+                    float intensity = (1.0 - vUv.x) * vUv.x;
+                    gl_FragColor = vec4(0.0, 0.0, 0.0, intensity);
+                }
+            `,
+            transparent: true,
+            side: THREE.DoubleSide
+        })
+    }
     // takes a sequence from x = 0 to x = n, 
     addBars(name, sequence, color){
         const material = new THREE.MeshBasicMaterial({ color: color})
@@ -11,6 +38,7 @@ class BarChart extends Chart {
             name,
             sequence,
             material,
+            overlapping: false,
         })
 
         return this
@@ -48,22 +76,36 @@ class BarChart extends Chart {
             if (property.overlapping){
                 for (let o = 0; o < property.sequences.length; o++){
                     let oSequence = property.sequences[o]
+
                     for (let i of oSequence){
                         const geometry = new THREE.BoxGeometry(width * 0.9, i.y);
                         const mesh = new THREE.Mesh( geometry, property.materials[o] )
-                        
-                        mesh.position.set(i.x + start + (j * offset), (i.y)/2, 0)
+                        mesh.position.set(i.x + start + (j * offset), (i.y)/2, 1)
                         this.add(mesh)
+                        
+                        if (this.dropShadow &&  o == 0){
+                            const dropShadow = new THREE.PlaneGeometry(width * 0.9 * 1.5, i.y);
+                            const dropMesh = new THREE.Mesh(dropShadow, this.dropShadowMaterial)
+                            dropMesh.position.set(i.x + start + (j * offset), (i.y)/2, 0.5)
+                            this.add(dropMesh)
+                        }
+
                     }
+                    
                 }
             }
-
             else {
                 for (let i of property.sequence){
                     const geometry = new THREE.BoxGeometry(width * 0.9, i.y);
                     const mesh = new THREE.Mesh( geometry, property.material )
-                    
-                    mesh.position.set(i.x + start + (j * offset), (i.y)/2, 0)
+                    mesh.position.set(i.x + start + (j * offset), (i.y)/2, 1)
+                    if (this.dropShadow){
+                        
+                        const dropShadow = new THREE.PlaneGeometry(width * 0.9 * 1.5, i.y);
+                        const dropMesh = new THREE.Mesh(dropShadow, this.dropShadowMaterial)
+                        dropMesh.position.set(i.x + start + (j * offset), (i.y)/2, 0.5)
+                        this.add(dropMesh)
+                    }
                     this.add(mesh)
                 }
             }
@@ -78,10 +120,10 @@ class BarChart extends Chart {
 
         // add new axis lines
         if (this.showXLines){
-            this.addLabelLines('x')
+            this.buildGridLines('x')
         }
         if (this.showYLines){
-            this.addLabelLines('y')
+            this.buildGridLines('y')
         }
 
         // register eventlisteners at the end of the build
